@@ -1,0 +1,13 @@
+# Compiled object files
+*.o
+
+# make dependencies
+*.d
+
+# vim swap files
+*.swp
+
+lexer
+parser
+cgen
+semant
