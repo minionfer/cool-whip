@@ -88,9 +88,9 @@ class Main {
                         cells.evolve();
                         cells.print();
                         countdown <- countdown - 1;
-                    
+												};
                 pool
-            );  (* end let countdown
+            );  -- end let countdown
             self;
         }
     };

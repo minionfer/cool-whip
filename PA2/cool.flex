@@ -50,13 +50,39 @@ extern YYSTYPE cool_yylval;
  */
 
 DARROW          =>
+INTEGER					[0-9]+
+TRUE						t(?i:rue)
+FALSE						f(?i:alse)
+WS							[ \t\f\v\r]+
+ID_CHAR					[a-zA-Z0-9_]
+
+%State COMMENT
 
 %%
+
+\n { curr_lineno++; }
+{WS} ;
 
  /*
   *  Nested comments
   */
-
+<INITIAL>"(*" { BEGIN(COMMENT); }
+<INITIAL>"*)" {
+	cool_yylval.error_msg = "Unexpected *)";
+	return (ERROR);
+}
+	/*
+	 * single-line cmment
+	 */
+<INITIAL>^--.*$ ;
+<COMMENT>[^*\n]* ;
+<COMMENT>"*" ;
+<COMMENT>"*)" { BEGIN(INITIAL); }
+<COMMENT><<EOF>> {
+	cool_yylval.error_msg = "EOF in comment";
+	BEGIN(INITIAL);
+	return (ERROR);
+}
 
  /*
   *  The multiple-character operators.
@@ -68,6 +94,66 @@ DARROW          =>
   * which must begin with a lower-case letter.
   */
 
+(?i:class)		{ return (CLASS); }
+(?i:else)		{ return (ELSE); }
+(?i:fi)		{ return (FI); }
+(?i:if)		{ return (IF); }
+(?i:in)		{ return (IN); }
+(?i:inherits)		{ return (INHERITS); }
+(?i:let)		{ return (LET); }
+(?i:loop)		{ return (LOOP); }
+(?i:pool)		{ return (POOL); }
+(?i:then)		{ return (THEN); }
+(?i:while)		{ return (WHILE); }
+(?i:case)		{ return (CASE); }
+(?i:esac)		{ return (ESAC); }
+(?i:new)		{ return (NEW); }
+(?i:isvoid)		{ return (ISVOID); }
+(?i:of)		{ return (OF); }
+(?i:not)		{ return (NOT); }
+
+[A-Z]{ID_CHAR}* {
+	cool_yylval.symbol = inttable.add_string(yytext);
+	return (TYPEID);
+}
+[a-z]{ID_CHAR}* {
+	cool_yylval.symbol = inttable.add_string(yytext);
+	return (OBJECTID);
+}
+{INTEGER}	{
+	cool_yylval.symbol = inttable.add_string(yytext);
+	return (INT_CONST);
+}
+{TRUE}	{
+	cool_yylval.boolean = 1;
+	return (BOOL_CONST);
+}
+{FALSE} {
+	cool_yylval.boolean = 0;
+	return (BOOL_CONST);
+}
+
+	/*
+	 * special symbols
+	 */
+")" { return ')'; }
+"(" { return '('; }
+"}" { return '}'; }
+"{" { return '{'; }
+"]" { return ']'; }
+"[" { return '['; }
+"@" { return '@'; }
+"." { return '.'; }
+";" { return ';'; }
+":" { return ':'; }
+"+" { return '+'; }
+"-" { return '-'; }
+"*" { return '*'; }
+"/" { return '/'; }
+"<" { return '<'; }
+"=" { return '='; }
+"<-" { return (ASSIGN); }
+"<=" { return (LE); }
 
  /*
   *  String constants (C syntax)
