@@ -75,7 +75,7 @@ ID_CHAR					[a-zA-Z0-9_]
 	/*
 	 * single-line cmment
 	 */
-<INITIAL>^--.*$ ;
+<INITIAL>--.*$ ;
 <COMMENT>[^*\n]* ;
 <COMMENT>"*" ;
 <COMMENT>"*)" { BEGIN(INITIAL); }
@@ -95,33 +95,33 @@ ID_CHAR					[a-zA-Z0-9_]
   * which must begin with a lower-case letter.
   */
 
-(?i:class)		{ return (CLASS); }
-(?i:else)		{ return (ELSE); }
-(?i:fi)		{ return (FI); }
-(?i:if)		{ return (IF); }
-(?i:in)		{ return (IN); }
-(?i:inherits)		{ return (INHERITS); }
-(?i:let)		{ return (LET); }
-(?i:loop)		{ return (LOOP); }
-(?i:pool)		{ return (POOL); }
-(?i:then)		{ return (THEN); }
-(?i:while)		{ return (WHILE); }
-(?i:case)		{ return (CASE); }
-(?i:esac)		{ return (ESAC); }
-(?i:new)		{ return (NEW); }
-(?i:isvoid)		{ return (ISVOID); }
-(?i:of)		{ return (OF); }
-(?i:not)		{ return (NOT); }
+<INITIAL>(?i:class)		{ return (CLASS); }
+<INITIAL>(?i:else)		{ return (ELSE); }
+<INITIAL>(?i:fi)		{ return (FI); }
+<INITIAL>(?i:if)		{ return (IF); }
+<INITIAL>(?i:in)		{ return (IN); }
+<INITIAL>(?i:inherits)		{ return (INHERITS); }
+<INITIAL>(?i:let)		{ return (LET); }
+<INITIAL>(?i:loop)		{ return (LOOP); }
+<INITIAL>(?i:pool)		{ return (POOL); }
+<INITIAL>(?i:then)		{ return (THEN); }
+<INITIAL>(?i:while)		{ return (WHILE); }
+<INITIAL>(?i:case)		{ return (CASE); }
+<INITIAL>(?i:esac)		{ return (ESAC); }
+<INITIAL>(?i:new)		{ return (NEW); }
+<INITIAL>(?i:isvoid)		{ return (ISVOID); }
+<INITIAL>(?i:of)		{ return (OF); }
+<INITIAL>(?i:not)		{ return (NOT); }
 
-{INTEGER}	{
+<INITIAL>{INTEGER}	{
 	cool_yylval.symbol = inttable.add_string(yytext);
 	return (INT_CONST);
 }
-{TRUE} {
+<INITIAL>{TRUE} {
 	cool_yylval.boolean = 1;
 	return (BOOL_CONST);
 }
-{FALSE} {
+<INITIAL>{FALSE} {
 	cool_yylval.boolean = 0;
 	return (BOOL_CONST);
 }
@@ -130,30 +130,31 @@ ID_CHAR					[a-zA-Z0-9_]
 	 * special symbols
 	 */
 	  /* function syntax */
-")" { return ')'; }
-"(" { return '('; }
-"," { return ','; }
+<INITIAL>")" { return ')'; }
+<INITIAL>"(" { return '('; }
+<INITIAL>"," { return ','; }
 		/* dispatch */
-"." { return '.'; }
+<INITIAL>\. { return '.'; }
 		/* expression delimiting */
-"}" { return '}'; }
-"{" { return '{'; }
-"@" { return '@'; }
+<INITIAL>"}" { return '}'; }
+<INITIAL>"{" { return '{'; }
+<INITIAL>"@" { return '@'; }
 		/* separating expressions */
-";" { return ';'; }
+<INITIAL>";" { return ';'; }
 		/* type specifications */
-":" { return ':'; }
+<INITIAL>":" { return ':'; }
 		/* arithmetic */
-"+" { return '+'; }
-"-" { return '-'; }
-"*" { return '*'; }
-"/" { return '/'; }
+<INITIAL>"+" { return '+'; }
+<INITIAL>"-" { return '-'; }
+<INITIAL>"*" { return '*'; }
+<INITIAL>"/" { return '/'; }
+<INITIAL>"~" { return '~'; }
 		/* less than */
-"<" { return '<'; }
-		/* equality boolean operator */
-"=" { return '='; }
-"<-" { return (ASSIGN); }
-"<=" { return (LE); }
+<INITIAL>"<" { return '<'; }
+		/* boolean operators */
+<INITIAL>"=" { return '='; }
+<INITIAL>"<-" { return (ASSIGN); }
+<INITIAL>"<=" { return (LE); }
 
  /*
   *  String constants (C syntax)
@@ -177,15 +178,6 @@ ID_CHAR					[a-zA-Z0-9_]
 	string_buf_ptr += len;
 	string_len += len;
 }
-<STRING_TOO_LONG>[^\\"\n] ;
-	/* ignore normal escaped characters */
-<STRING_TOO_LONG>\\[^\n] ;
-	/* continue looking for end of string on seeing an escaped newline */
-<STRING_TOO_LONG>\\\n { curr_lineno++; }
-	/* terminate string on unescaped newline */
-<STRING_TOO_LONG>\n { curr_lineno++; BEGIN(INITIAL); }
-	/* also terminate on end of string quote */
-<STRING_TOO_LONG>\" { BEGIN(INITIAL); }
 <STRING>\0 {
 	cool_yylval.error_msg = "NULL character in string constant";
 	return (ERROR);
@@ -195,11 +187,23 @@ ID_CHAR					[a-zA-Z0-9_]
 		// handle this error
 		return (ERROR);
 	}
-	if (yytext[1] == 'n') {
-		*string_buf_ptr = '\n';
-	} else {
-		*string_buf_ptr = yytext[1];
+	switch(yytext[1]) {
+		case 'n':
+			*string_buf_ptr = '\n';
+			break;
+		case 't':
+			*string_buf_ptr = '\t';
+			break;
+		case 'b':
+			*string_buf_ptr = '\b';
+			break;
+		case 'f':
+			*string_buf_ptr = '\f';
+			break;
+		default:
+			*string_buf_ptr = yytext[1];
 	}
+
 	string_buf_ptr++;
 	string_len++;
 }
@@ -208,11 +212,21 @@ ID_CHAR					[a-zA-Z0-9_]
 	cool_yylval.symbol = inttable.add_string(string_buf);
 	return (STR_CONST);
 }
+<STRING_TOO_LONG>[^\\"\n] ;
+	/* ignore normal escaped characters */
+<STRING_TOO_LONG>\\[^\n] ;
+	/* continue looking for end of string on seeing an escaped newline */
+<STRING_TOO_LONG>\\\n { curr_lineno++; }
+	/* terminate string on unescaped newline */
+<STRING_TOO_LONG>\n { curr_lineno++; BEGIN(INITIAL); }
+	/* also terminate on end of string quote */
+<STRING_TOO_LONG>\" { BEGIN(INITIAL); }
 <STRING_TOO_LONG,STRING><<EOF>> {
 	cool_yylval.error_msg = "EOF in string constant";
 	BEGIN(INITIAL);
 	return (ERROR);
 }
+
 
 [A-Z]{ID_CHAR}* {
 	cool_yylval.symbol = inttable.add_string(yytext);
