@@ -33,9 +33,6 @@ extern FILE *fin; /* we read from this file */
 
 char string_buf[MAX_STR_CONST]; /* to assemble string constants */
 char *string_buf_ptr;
-int string_len;
-
-int comment_level = 0;
 
 extern int curr_lineno;
 extern int verbose_flag;
@@ -45,6 +42,8 @@ extern YYSTYPE cool_yylval;
 /*
  *  Add Your own definitions here
  */
+int string_len;
+int comment_level = 0;
 
 %}
 
@@ -199,6 +198,14 @@ ID_CHAR					[a-zA-Z0-9_]
 }
 	/* handle escaped anything, including newline */
 <STRING>\\(.|\n) {
+	// can we handle the new character?
+
+	if (1 + string_len >= MAX_STR_CONST) {
+		BEGIN(STRING_ERROR);
+		cool_yylval.error_msg = "String constant too long";
+		return (ERROR);
+	}
+
 	switch(yytext[1]) {
 		case 'n':
 			*string_buf_ptr = '\n';
