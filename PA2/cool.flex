@@ -197,7 +197,8 @@ ID_CHAR					[a-zA-Z0-9_]
 	BEGIN(INITIAL);
 	return (ERROR);
 }
-<STRING>\\. {
+	/* handle escaped anything, including newline */
+<STRING>\\(.|\n) {
 	switch(yytext[1]) {
 		case 'n':
 			*string_buf_ptr = '\n';
