@@ -35,6 +35,8 @@ char string_buf[MAX_STR_CONST]; /* to assemble string constants */
 char *string_buf_ptr;
 int string_len;
 
+int comment_level = 0;
+
 extern int curr_lineno;
 extern int verbose_flag;
 
@@ -67,7 +69,7 @@ ID_CHAR					[a-zA-Z0-9_]
  /*
   *  Nested comments
   */
-<INITIAL>"(*" { BEGIN(COMMENT); }
+<INITIAL>"(*" { BEGIN(COMMENT); comment_level = 1; }
 <INITIAL>"*)" {
 	cool_yylval.error_msg = "Unexpected *)";
 	return (ERROR);
@@ -76,9 +78,16 @@ ID_CHAR					[a-zA-Z0-9_]
 	 * single-line cmment
 	 */
 <INITIAL>--.*$ ;
-<COMMENT>[^*\n]* ;
+<COMMENT>[^(*\n]* ;
+<COMMENT>"(" ;
+<COMMENT>"(*" { comment_level++; }
 <COMMENT>"*" ;
-<COMMENT>"*)" { BEGIN(INITIAL); }
+<COMMENT>"*)" {
+	comment_level--;
+	if (comment_level == 0) {
+		BEGIN(INITIAL);
+	}
+}
 <COMMENT><<EOF>> {
 	cool_yylval.error_msg = "EOF in comment";
 	BEGIN(INITIAL);
@@ -88,7 +97,7 @@ ID_CHAR					[a-zA-Z0-9_]
  /*
   *  The multiple-character operators.
   */
-{DARROW}		{ return (DARROW); }
+<INITIAL>{DARROW}		{ return (DARROW); }
 
  /*
   * Keywords are case-insensitive except for the values true and false,
