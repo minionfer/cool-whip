@@ -75,9 +75,9 @@ ID_CHAR					[a-zA-Z0-9_]
 	return (ERROR);
 }
 	/*
-	 * single-line cmment
+	 * single-line comment
 	 */
-<INITIAL>--.*$ ;
+<INITIAL>--.* ;
 <COMMENT>[^(*\n]* ;
 <COMMENT>"(" ;
 <COMMENT>"(*" { comment_level++; }
