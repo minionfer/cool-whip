@@ -59,7 +59,7 @@ ID_CHAR					[a-zA-Z0-9_]
 
 %State COMMENT
 %State STRING
-%State STRING_TOO_LONG
+%State STRING_ERROR
 
 %%
 
@@ -168,10 +168,9 @@ ID_CHAR					[a-zA-Z0-9_]
 	string_len = 0;
 }
 <STRING>[^\\\"\n\0]* {
-	//printf("str '%s'\n", yytext);
 	int len = strlen(yytext);
 	if (len + string_len >= MAX_STR_CONST) {
-		BEGIN(STRING_TOO_LONG);
+		BEGIN(STRING_ERROR);
 		cool_yylval.error_msg = "String constant too long";
 		return (ERROR);
 	}
@@ -180,7 +179,8 @@ ID_CHAR					[a-zA-Z0-9_]
 	string_len += len;
 }
 <STRING>\0 {
-	cool_yylval.error_msg = "NULL character in string constant";
+	cool_yylval.error_msg = "String contains null character";
+	BEGIN(STRING_ERROR);
 	return (ERROR);
 }
 <STRING>\n {
@@ -189,14 +189,11 @@ ID_CHAR					[a-zA-Z0-9_]
 	return (ERROR);
 }
 <STRING>\\. {
-	//printf("escaped %c (code: %d)\n", yytext[1], (int) yytext[1]);
 	switch(yytext[1]) {
 		case 'n':
-			//printf("inserting newline\n");
 			*string_buf_ptr = '\n';
 			break;
 		case 't':
-			//printf("inserting tab\n");
 			*string_buf_ptr = '\t';
 			break;
 		case 'b':
@@ -205,6 +202,10 @@ ID_CHAR					[a-zA-Z0-9_]
 		case 'f':
 			*string_buf_ptr = '\f';
 			break;
+		case '\0':
+			cool_yylval.error_msg = "String contains null character";
+			BEGIN(STRING_ERROR);
+			return (ERROR);
 		default:
 			*string_buf_ptr = yytext[1];
 	}
@@ -218,16 +219,16 @@ ID_CHAR					[a-zA-Z0-9_]
 	cool_yylval.symbol = inttable.add_string(string_buf);
 	return (STR_CONST);
 }
-<STRING_TOO_LONG>[^\\"\n] ;
+<STRING_ERROR>[^\\"\n] ;
 	/* ignore normal escaped characters */
-<STRING_TOO_LONG>\\[^\n] ;
+<STRING_ERROR>\\[^\n] ;
 	/* continue looking for end of string on seeing an escaped newline */
-<STRING_TOO_LONG>\\\n { curr_lineno++; }
+<STRING_ERROR>\\\n { curr_lineno++; }
 	/* terminate string on unescaped newline */
-<STRING_TOO_LONG>\n { curr_lineno++; BEGIN(INITIAL); }
+<STRING_ERROR>\n { curr_lineno++; BEGIN(INITIAL); }
 	/* also terminate on end of string quote */
-<STRING_TOO_LONG>\" { BEGIN(INITIAL); }
-<STRING_TOO_LONG,STRING><<EOF>> {
+<STRING_ERROR>\" { BEGIN(INITIAL); }
+<STRING_ERROR,STRING><<EOF>> {
 	cool_yylval.error_msg = "EOF in string constant";
 	BEGIN(INITIAL);
 	return (ERROR);

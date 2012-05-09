@@ -7,6 +7,9 @@
 # vim swap files
 *.swp
 
+# ctags
+tags
+
 # outputs
 lexer
 parser
