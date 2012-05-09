@@ -59,7 +59,7 @@ class CellularAutomaton inherits IO {
    
     evolve() : SELF_TYPE {
         (let position : Int in
-        (let num : Int <- num_cells in
+        (let num : Int <- num_cells[] in
         (let temp : String in
             {
                 while position < num loop

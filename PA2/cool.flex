@@ -129,21 +129,28 @@ ID_CHAR					[a-zA-Z0-9_]
 	/*
 	 * special symbols
 	 */
+	  /* function syntax */
 ")" { return ')'; }
 "(" { return '('; }
+"," { return ','; }
+		/* dispatch */
+"." { return '.'; }
+		/* expression delimiting */
 "}" { return '}'; }
 "{" { return '{'; }
-"]" { return ']'; }
-"[" { return '['; }
 "@" { return '@'; }
-"." { return '.'; }
+		/* separating expressions */
 ";" { return ';'; }
+		/* type specifications */
 ":" { return ':'; }
+		/* arithmetic */
 "+" { return '+'; }
 "-" { return '-'; }
 "*" { return '*'; }
 "/" { return '/'; }
+		/* less than */
 "<" { return '<'; }
+		/* equality boolean operator */
 "=" { return '='; }
 "<-" { return (ASSIGN); }
 "<=" { return (LE); }
@@ -179,7 +186,6 @@ ID_CHAR					[a-zA-Z0-9_]
 <STRING_TOO_LONG>\n { curr_lineno++; BEGIN(INITIAL); }
 	/* also terminate on end of string quote */
 <STRING_TOO_LONG>\" { BEGIN(INITIAL); }
-<STRING_TOO_LONG><<EOF>> { yyterminate(); }
 <STRING>\0 {
 	cool_yylval.error_msg = "NULL character in string constant";
 	return (ERROR);
@@ -202,6 +208,11 @@ ID_CHAR					[a-zA-Z0-9_]
 	cool_yylval.symbol = inttable.add_string(string_buf);
 	return (STR_CONST);
 }
+<STRING_TOO_LONG,STRING><<EOF>> {
+	cool_yylval.error_msg = "EOF in string constant";
+	BEGIN(INITIAL);
+	return (ERROR);
+}
 
 [A-Z]{ID_CHAR}* {
 	cool_yylval.symbol = inttable.add_string(yytext);
@@ -214,5 +225,10 @@ ID_CHAR					[a-zA-Z0-9_]
 
 \n { curr_lineno++; }
 {WS} ;
+
+. {
+	cool_yylval.error_msg = strdup(yytext);
+	return (ERROR);
+}
 
 %%
