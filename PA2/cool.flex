@@ -168,8 +168,9 @@ ID_CHAR					[a-zA-Z0-9_]
 	string_len = 0;
 }
 <STRING>[^\\\"\n\0]* {
+	//printf("str '%s'\n", yytext);
 	int len = strlen(yytext);
-	if (len > MAX_STR_CONST - string_len) {
+	if (len + string_len >= MAX_STR_CONST) {
 		BEGIN(STRING_TOO_LONG);
 		cool_yylval.error_msg = "String constant too long";
 		return (ERROR);
@@ -182,16 +183,20 @@ ID_CHAR					[a-zA-Z0-9_]
 	cool_yylval.error_msg = "NULL character in string constant";
 	return (ERROR);
 }
+<STRING>\n {
+	cool_yylval.error_msg = "Unterminated string constant";
+	BEGIN(INITIAL);
+	return (ERROR);
+}
 <STRING>\\. {
-	if (yytext[1] == '\n') {
-		// handle this error
-		return (ERROR);
-	}
+	//printf("escaped %c (code: %d)\n", yytext[1], (int) yytext[1]);
 	switch(yytext[1]) {
 		case 'n':
+			//printf("inserting newline\n");
 			*string_buf_ptr = '\n';
 			break;
 		case 't':
+			//printf("inserting tab\n");
 			*string_buf_ptr = '\t';
 			break;
 		case 'b':
@@ -209,6 +214,7 @@ ID_CHAR					[a-zA-Z0-9_]
 }
 <STRING>\" {
 	BEGIN(INITIAL);
+	*string_buf_ptr = '\0';
 	cool_yylval.symbol = inttable.add_string(string_buf);
 	return (STR_CONST);
 }
