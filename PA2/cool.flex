@@ -33,6 +33,7 @@ extern FILE *fin; /* we read from this file */
 
 char string_buf[MAX_STR_CONST]; /* to assemble string constants */
 char *string_buf_ptr;
+int string_len;
 
 extern int curr_lineno;
 extern int verbose_flag;
@@ -57,11 +58,11 @@ WS							[ \t\f\v\r]+
 ID_CHAR					[a-zA-Z0-9_]
 
 %State COMMENT
+%State STRING
+%State STRING_TOO_LONG
 
 %%
 
-\n { curr_lineno++; }
-{WS} ;
 
  /*
   *  Nested comments
@@ -112,19 +113,11 @@ ID_CHAR					[a-zA-Z0-9_]
 (?i:of)		{ return (OF); }
 (?i:not)		{ return (NOT); }
 
-[A-Z]{ID_CHAR}* {
-	cool_yylval.symbol = inttable.add_string(yytext);
-	return (TYPEID);
-}
-[a-z]{ID_CHAR}* {
-	cool_yylval.symbol = inttable.add_string(yytext);
-	return (OBJECTID);
-}
 {INTEGER}	{
 	cool_yylval.symbol = inttable.add_string(yytext);
 	return (INT_CONST);
 }
-{TRUE}	{
+{TRUE} {
 	cool_yylval.boolean = 1;
 	return (BOOL_CONST);
 }
@@ -161,6 +154,65 @@ ID_CHAR					[a-zA-Z0-9_]
   *  \n \t \b \f, the result is c.
   *
   */
+<INITIAL>\" {
+	BEGIN(STRING);
+	string_buf_ptr = string_buf;
+	string_len = 0;
+}
+<STRING>[^\\\"\n\0]* {
+	int len = strlen(yytext);
+	if (len > MAX_STR_CONST - string_len) {
+		BEGIN(STRING_TOO_LONG);
+		cool_yylval.error_msg = "String constant too long";
+		return (ERROR);
+	}
+	strcpy(string_buf_ptr, yytext);
+	string_buf_ptr += len;
+	string_len += len;
+}
+<STRING_TOO_LONG>[^\\"\n] ;
+	/* ignore normal escaped characters */
+<STRING_TOO_LONG>\\[^\n] ;
+	/* continue looking for end of string on seeing an escaped newline */
+<STRING_TOO_LONG>\\\n { curr_lineno++; }
+	/* terminate string on unescaped newline */
+<STRING_TOO_LONG>\n { curr_lineno++; BEGIN(INITIAL); }
+	/* also terminate on end of string quote */
+<STRING_TOO_LONG>\" { BEGIN(INITIAL); }
+<STRING_TOO_LONG><<EOF>> { yyterminate(); }
+<STRING>\0 {
+	cool_yylval.error_msg = "NULL character in string constant";
+	return (ERROR);
+}
+<STRING>\\. {
+	if (yytext[1] == '\n') {
+		// handle this error
+		return (ERROR);
+	}
+	if (yytext[1] == 'n') {
+		*string_buf_ptr = '\n';
+	} else {
+		*string_buf_ptr = yytext[1];
+	}
+	string_buf_ptr++;
+	string_len++;
+}
+<STRING>\" {
+	BEGIN(INITIAL);
+	cool_yylval.symbol = inttable.add_string(string_buf);
+	return (STR_CONST);
+}
 
+[A-Z]{ID_CHAR}* {
+	cool_yylval.symbol = inttable.add_string(yytext);
+	return (TYPEID);
+}
+[a-z]{ID_CHAR}* {
+	cool_yylval.symbol = inttable.add_string(yytext);
+	return (OBJECTID);
+}
+
+\n { curr_lineno++; }
+{WS} ;
 
 %%
