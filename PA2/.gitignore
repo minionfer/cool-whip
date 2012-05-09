@@ -17,3 +17,6 @@ cgen
 semant
 # output from flex
 cool-lex.cc
+
+# grading script outputs to this folder
+grading
